@@ -1,0 +1,127 @@
+---
+title: "Factor Analysis - Personality"
+author: "Sabyasachi Sahu (sab21.sahu@gmail.com)"
+date: "3 February 2017"
+output: html_document
+---
+## INTRODUCTION
+Factor Analysis is a method (not unlike SEM) for analyzing the covariation among the observed variables to address the questions:
+
+*How many latent factors are needed to account for most of the variation among the observed variables?
+*Which variables appear to define each factor; hence what labels should we give to these factors? If the observed covariation can be explained by a small number of factors (e.g., 2-5), this would increase our understanding of the relationships among the traits or variables!
+
+ 
+```{r}
+##Loading Data
+d = read.table("http://www.stanford.edu/class/psych253/data/personality0.txt")
+head(d)
+names(d)
+
+```
+
+
+
+##Using Coorplot
+```{r}
+
+
+#install.packages("corrplot")
+library(corrplot)
+#?corrplot
+corrplot(cor(d), order = "hclust", tl.col='black', tl.cex=.75)
+```
+
+
+##Factor Analysis with R
+
+Factor Analysis with No rotation 
+
+```{r}
+d_stan = as.data.frame(scale(d))
+### Factor analysis with no rotation
+res1b = factanal(d_stan, factors = 10, rotation = "none", na.action = na.omit)
+res1b$loadings
+```
+
+##Compute eigenvalues from factor loadings
+```{r}
+# Compute eigenvalue of factor 1
+loadings_fac1 = res1b$loadings[,1]
+eigenv_fac1 = sum(loadings_fac1^2); eigenv_fac1
+```
+```{r}
+# Compute proportion variance manually
+eigenv_fac1/32
+```
+
+
+##Uniqueness & Communality
+We can also look at the uniqueness of each variable. Uniqueness =1 - Communality, where Communality is SS factor loadings for all factors for a given variable. If all the factors jointly explain a large percent of variance in a given variable, that variable has high Communality (and thus low uniqueness). Let's look at the **uniqueness of the variables, and then try to calculate uniqueness for the variable distant by ourselves!
+
+```{r}
+res1b$uniquenesses
+# Calculate uniqueness
+loadings_distant = res1b$loadings[1,]
+communality_distant = sum(loadings_distant^2); communality_distant
+uniqueness_distant = 1-communality_distant; uniqueness_distant
+```
+
+
+##Visualize Loadings
+```{r}
+### Plot loadings against one another
+load = res1b$loadings[,1:2]
+plot(load, type="n") # set up plot 
+text(load,labels=names(d_stan),cex=.7) # add variable names
+```
+
+It can be difficult to label factors when they are unrotated, since a description of one factor might overlap with a description of another factor. For instance, we we could define Factor 1 as talkative & organized vs. quiet & disorganized, but Factor 2 could be defined as talkative & disorganized vs. organized and quiet - this doesn't make much sense! However, let's see what happens when we rotate the factors. Note that when the "best-fitting" factors are found, these factors are not unique. Any rotation of the best-fittng factors is also best-fitting.
+
+
+
+
+##Rotation of Factors
+
+There are many methods we can use to rotate the factors, but the method called varimax rotation is the most common, and thus the default in  R's factanal(). Varimax rotation essentially orthogonally rotates the factor axes with the goal of maximizing the variance of the squared loadings of a factor on all the variables in the factor matrix. In other words, varimax rotation looks for a rotation (i.e., a linear combination) of the original factors that maximizes the variance of the loadings. As a result, each variable tends to load more heavily on a single factor (and load very little on other factors), making the interpretation of a factor easier.
+
+```{r}
+### Factor analysis with rotation
+res1a = factanal(d_stan, factors = 10, rotation = "varimax", na.action = na.omit)
+res1a$loadings
+
+### Plot loadings against one another
+load = res1a$loadings[,1:2]
+plot(load, type="n") # set up plot 
+text(load,labels=names(d_stan),cex=.7) # add variable names
+```
+
+
+Here we can see that now variables like sociabl and shy load heavily on Factor 1, but have very low loadings on Factor 2. As a result, we can define or label Factor 1 using these terms (e.g., extraverted vs. introverted), and then define Factor 2 using terms that load heavily on Factor 2 but less so on Factor 1 (e.g., Factor 2 might be conscientiousness, i.e., hardwrk vs. lazy).
+
+
+##Creating composite variables
+```{r}
+shy = rowMeans(cbind(d_stan$distant, d_stan$shy, d_stan$withdrw, d_stan$quiet))
+outgoing = rowMeans(cbind(d_stan$talkatv, d_stan$outgoin, d_stan$sociabl))
+hardworking = rowMeans(cbind(d_stan$hardwrk, d_stan$persevr, d_stan$discipl))
+friendly = rowMeans(cbind(d_stan$friendl, d_stan$kind, d_stan$coopera, d_stan$agreebl, d_stan$approvn, 
+    d_stan$sociabl))
+anxious = rowMeans(cbind(d_stan$tense, d_stan$anxious, d_stan$worryin))
+#etc, you guys choose what you want to combine
+combined_data = cbind(shy,outgoing,hardworking,friendly,anxious)
+combined_data = as.data.frame(combined_data)
+res2 = factanal(combined_data, factors = 2, na.action=na.omit)
+res2$loadings
+```
+
+###Plotting
+```{r}
+### Plot loadings against one another
+load = res2$loadings[,1:2]
+plot(load, type="n") # set up plot 
+text(load,labels=names(combined_data),cex=.7) # add variable names
+```
+
+##Conclusion
+On a related note, redundant or synonymous variables hinder the extraction of general factors. Synonomous variables can be combined into composites.
+
